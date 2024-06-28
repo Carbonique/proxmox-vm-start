@@ -130,8 +130,8 @@ func startVM(vmid string) error {
 	return nil
 }
 
-func stopVM(vmid string) error {
-	url := fmt.Sprintf("%s/nodes/%s/qemu/%s/status/stop", proxmoxAPIURL, proxmoxNode, vmid)
+func shutdownVM(vmid string) error {
+	url := fmt.Sprintf("%s/nodes/%s/qemu/%s/status/shutdown", proxmoxAPIURL, proxmoxNode, vmid)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func stopVM(vmid string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to stop VM, response: %s", body)
+		return fmt.Errorf("failed to shutdown VM, response: %s", body)
 	}
 	return nil
 }
@@ -176,7 +176,7 @@ func startVMHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func stopVMHandler(w http.ResponseWriter, r *http.Request) {
+func shutdownVMHandler(w http.ResponseWriter, r *http.Request) {
 	if ticket == "" || csrfToken == "" {
 		if err := authenticate(); err != nil {
 			http.Error(w, "Authentication failed", http.StatusInternalServerError)
@@ -190,14 +190,14 @@ func stopVMHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if status == "stopped" {
-		fmt.Fprintln(w, "VM is already stopped")
+	if status == "shutdown" {
+		fmt.Fprintln(w, "VM is already shutdown")
 	} else {
-		if err := stopVM(vmID); err != nil {
-			http.Error(w, "Failed to stop VM", http.StatusInternalServerError)
+		if err := shutdownVM(vmID); err != nil {
+			http.Error(w, "Failed to shutdown VM", http.StatusInternalServerError)
 			return
 		}
-		fmt.Fprintln(w, "VM is stopping")
+		fmt.Fprintln(w, "VM is shutting down")
 	}
 }
 
@@ -207,7 +207,7 @@ func main() {
 	}
 
 	http.HandleFunc("/start-vm", startVMHandler)
-	http.HandleFunc("/stop-vm", stopVMHandler)
+	http.HandleFunc("/shutdown-vm", shutdownVMHandler)
 	log.Println("Server is running on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
